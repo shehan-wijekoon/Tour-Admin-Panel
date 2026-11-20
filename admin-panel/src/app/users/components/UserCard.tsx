@@ -1,72 +1,219 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Globe, Eye, EyeOff, Hash } from "lucide-react";
-
-export interface UserData {
-  id: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  country: string;
-  createdAt: string;
-}
+import { Mail, Globe, Eye, EyeOff, Hash, CheckCircle2, ShieldAlert, ShieldCheck, Loader2, Crown } from "lucide-react";
+import Image from "next/image";
+import { User, UsersService } from "@/services/users.service";
 
 interface UserCardProps {
-  user: UserData;
+  user: User;
+  onUserUpdate?: (updatedUser: User) => void;
 }
 
-export default function UserCard({ user }: UserCardProps) {
+export default function UserCard({ user: initialUser, onUserUpdate }: UserCardProps) {
   const [showId, setShowId] = useState(false);
+  const [user, setUser] = useState<User>(initialUser);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const fullName = `${user.firstname} ${user.lastname}`;
   const initial = user.firstname ? user.firstname.charAt(0).toUpperCase() : "U";
 
+  // Toggle Active/Blocked status
+  const handleToggleAccess = async () => {
+    try {
+      setLoadingAction("access");
+      const updated = await UsersService.updateStatus(user.id, {
+        hasAccess: !user.hasAccess,
+      });
+      setUser(updated);
+      if (onUserUpdate) onUserUpdate(updated);
+    } catch (err) {
+      alert("Failed to update access status");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // Toggle VIP status
+  const handleToggleVip = async () => {
+    try {
+      setLoadingAction("vip");
+      const updated = await UsersService.updateStatus(user.id, {
+        isVip: !user.isVip,
+      });
+      setUser(updated);
+      if (onUserUpdate) onUserUpdate(updated);
+    } catch (err) {
+      alert("Failed to update VIP status");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // Toggle Verified status
+  const handleToggleVerified = async () => {
+    try {
+      setLoadingAction("verified");
+      const updated = await UsersService.updateStatus(user.id, {
+        isVerified: !user.isVerified,
+      });
+      setUser(updated);
+      if (onUserUpdate) onUserUpdate(updated);
+    } catch (err) {
+      alert("Failed to update verification status");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   return (
-    <div className="w-full bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-shadow">
-      {/* Header Profile Info */}
-      <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
-          {initial}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-slate-900 truncate">{fullName}</h3>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
-            <Globe className="w-3 h-3 text-indigo-500" /> {user.country}
-          </span>
-        </div>
-      </div>
+    <div className="w-full bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+      <div>
+        {/* Header Profile Info & Avatar */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative flex-shrink-0">
+              {user.avatarUrl ? (
+                <Image
+                  src={user.avatarUrl}
+                  alt={fullName}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
+                  {initial}
+                </div>
+              )}
 
-      {/* User Details Grid */}
-      <div className="mt-4 space-y-3">
-        {/* Email Field */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Mail className="w-3.5 h-3.5" />
-            <span>Email</span>
-          </div>
-          <span className="font-semibold text-slate-800 truncate max-w-[180px]">
-            {user.email}
-          </span>
-        </div>
+              {/* VIP Indicator Badge (Crown) */}
+              {user.isVip && (
+                <div
+                  className="absolute -top-1.5 -right-1.5 bg-gradient-to-tr from-amber-500 to-yellow-400 text-white p-1 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
+                  title="VIP Member"
+                >
+                  <Crown className="w-2.5 h-2.5 fill-current" />
+                </div>
+              )}
+            </div>
 
-        {/* User ID Field with Toggle */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Hash className="w-3.5 h-3.5" />
-            <span>User ID</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-bold text-slate-900 truncate">{fullName}</h3>
+                {user.isVerified && <CheckCircle2 className="w-4 h-4 text-blue-500 fill-blue-50 flex-shrink-0" />}
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                <Globe className="w-3 h-3 text-indigo-500" /> {user.country}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 font-mono">
-            <span className="text-slate-800 font-semibold text-[11px]">
-              {showId ? user.id : `${user.id.substring(0, 8)}...`}
-            </span>
+
+          {/* Badges Stack (Interactive Toggles) */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {/* Access Status Toggle Button */}
             <button
               type="button"
-              onClick={() => setShowId(!showId)}
-              className="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+              disabled={loadingAction !== null}
+              onClick={handleToggleAccess}
+              className="group cursor-pointer focus:outline-none"
+              title="Click to toggle access status"
             >
-              {showId ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              {user.hasAccess ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-100 transition-colors">
+                  {loadingAction === "access" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="w-3 h-3" />
+                  )}{" "}
+                  Active
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 group-hover:bg-rose-100 transition-colors">
+                  {loadingAction === "access" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="w-3 h-3" />
+                  )}{" "}
+                  Blocked
+                </span>
+              )}
             </button>
+
+            {/* VIP Status Toggle Button */}
+            <button
+              type="button"
+              disabled={loadingAction !== null}
+              onClick={handleToggleVip}
+              className="group cursor-pointer focus:outline-none"
+              title="Click to toggle VIP status"
+            >
+              {user.isVip ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 group-hover:bg-amber-100 transition-colors">
+                  {loadingAction === "vip" && <Loader2 className="w-3 h-3 animate-spin" />} VIP
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 group-hover:bg-slate-200 transition-colors">
+                  {loadingAction === "vip" && <Loader2 className="w-3 h-3 animate-spin" />} Standard
+                </span>
+              )}
+            </button>
+
+            {/* Verified Status Toggle Button */}
+            <button
+              type="button"
+              disabled={loadingAction !== null}
+              onClick={handleToggleVerified}
+              className="group cursor-pointer focus:outline-none"
+              title="Click to toggle verified status"
+            >
+              {user.isVerified ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 group-hover:bg-blue-100 transition-colors">
+                  {loadingAction === "verified" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3" />
+                  )}{" "}
+                  Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 group-hover:bg-slate-200 transition-colors">
+                  {loadingAction === "verified" && <Loader2 className="w-3 h-3 animate-spin" />} Unverified
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* User Details Grid */}
+        <div className="mt-4 space-y-3">
+          {/* Email Field */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-slate-500">
+              <Mail className="w-3.5 h-3.5" />
+              <span>Email</span>
+            </div>
+            <span className="font-semibold text-slate-800 truncate max-w-[180px]">{user.email}</span>
+          </div>
+
+          {/* User ID Field with Toggle */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-slate-500">
+              <Hash className="w-3.5 h-3.5" />
+              <span>User ID</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span className="text-slate-800 font-semibold text-[11px]">
+                {showId ? user.id : `${user.id.substring(0, 8)}...`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowId(!showId)}
+                className="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+              >
+                {showId ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -75,7 +222,8 @@ export default function UserCard({ user }: UserCardProps) {
       <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400">
         <span>Country: {user.country}</span>
         <span>
-          Joined: {new Date(user.createdAt).toLocaleDateString(undefined, {
+          Joined:{" "}
+          {new Date(user.createdAt).toLocaleDateString(undefined, {
             year: "numeric",
             month: "short",
             day: "numeric",
